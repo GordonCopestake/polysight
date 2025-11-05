@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import cv2
@@ -31,6 +34,10 @@ class Pipeline:
         self._storage = Storage(cfg.storage, cfg.sku)
         self._inspector = Inspector(cfg.inspection)
         self._geometry_resolver = GeometryResolver(cfg.geometry)
+        self._add_part_requested = False
+        self._add_part_process: subprocess.Popen | None = None
+        self._project_root = Path(__file__).resolve().parent.parent
+        self._display.set_add_part_handler(self._handle_add_part_clicked)
 
     def run(self) -> None:
         with open_camera(self._cfg.camera_id, self._cfg.capture) as camera:
@@ -40,6 +47,13 @@ class Pipeline:
 
     def _loop(self, camera: Camera, state: PipelineState) -> None:
         while True:
+            if self._add_part_requested:
+                self._launch_add_part_tool()
+                self._add_part_requested = False
+
+            tool_running = (
+                self._add_part_process is not None and self._add_part_process.poll() is None
+            )
             frame = camera.read().image
             is_stable, jitter = self._is_stable(frame, state)
 
@@ -68,7 +82,12 @@ class Pipeline:
                     state.last_result = result
                     state.hold_counter = 0
                 else:
-                    debug = f"jitter {jitter:.2f}" if self._cfg.overlay.show_debug else None
+                    debug_parts = []
+                    if self._cfg.overlay.show_debug:
+                        debug_parts.append(f"jitter {jitter:.2f}")
+                    if tool_running:
+                        debug_parts.append("add-part tool active")
+                    debug = " | ".join(debug_parts) if debug_parts else None
                     self._display.show_idle(frame, is_stable, debug)
             else:
                 state.hold_counter += 1
@@ -108,3 +127,19 @@ class Pipeline:
     def _should_quit() -> bool:
         key = cv2.waitKey(1) & 0xFF
         return key in (27, ord("q"))
+
+    def _handle_add_part_clicked(self) -> None:
+        self._add_part_requested = True
+
+    def _launch_add_part_tool(self) -> None:
+        if self._add_part_process and self._add_part_process.poll() is None:
+            return
+        try:
+            cmd = [sys.executable, "tools/add_part.py"]
+            self._add_part_process = subprocess.Popen(
+                cmd,
+                cwd=str(self._project_root),
+            )
+        except Exception as exc:
+            print(f"Failed to launch add-part tool: {exc}")
+            self._add_part_process = None

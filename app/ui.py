@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Optional
+from typing import Callable, Optional
 
 import cv2
 import numpy as np
@@ -25,9 +25,13 @@ class Display:
         cv2.setWindowProperty(
             self._window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
         )
+        self._add_part_handler: Optional[Callable[[], None]] = None
+        self._add_rect = (16, 16, 32, 32)  # x, y, size, size
+        cv2.setMouseCallback(self._window_name, self._handle_mouse)
 
     def show_idle(self, frame: np.ndarray, is_stable: bool, debug: Optional[str] = None) -> None:
         canvas = frame.copy()
+        self._draw_add_button(canvas)
         status = "Hold part steady" if not is_stable else "Capturing..."
         color = (50, 150, 255) if not is_stable else (0, 200, 0)
         self._overlay_text(canvas, status, color, debug)
@@ -35,6 +39,7 @@ class Display:
 
     def show_result(self, result: InspectionResult, banner: str) -> None:
         canvas = result.annotated
+        self._draw_add_button(canvas)
         color = (0, 255, 0) if result.passed else (0, 0, 255)
         reasons = "\n".join(result.reasons[:3]) if result.reasons else ""
         self._overlay_text(canvas, banner, color, reasons)
@@ -67,3 +72,24 @@ class Display:
                     thickness,
                     cv2.LINE_AA,
                 )
+
+    def set_add_part_handler(self, handler: Callable[[], None]) -> None:
+        self._add_part_handler = handler
+
+    def _draw_add_button(self, frame: np.ndarray) -> None:
+        x, y, w, h = self._add_rect
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 255, 255), 1)
+        cv2.line(frame, (x + w // 2, y + 4), (x + w // 2, y + h - 4), (255, 255, 255), 2)
+        cv2.line(frame, (x + 4, y + h // 2), (x + w - 4, y + h // 2), (255, 255, 255), 2)
+
+    def _handle_mouse(self, event: int, x: int, y: int, _flags: int, _userdata) -> None:
+        if event != cv2.EVENT_LBUTTONUP:
+            return
+        if self._add_part_handler is None:
+            return
+        if self._point_in_add_button(x, y):
+            self._add_part_handler()
+
+    def _point_in_add_button(self, x: int, y: int) -> bool:
+        bx, by, bw, bh = self._add_rect
+        return bx <= x <= bx + bw and by <= y <= by + bh

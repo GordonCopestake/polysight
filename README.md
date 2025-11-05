@@ -11,6 +11,16 @@ pip install -r requirements.txt
 python app/main.py --sku tf-1234 --config config/sku_tf-1234.yaml
 ```
 
+## Adding a new part
+
+Launch the helper and follow the prompts to create a fresh YAML:
+
+```bash
+python tools/add_part.py
+```
+
+When you're done, point the inspection app at the generated config. You can also click the `[+]` button in the inspection window to launch the same helper without leaving the operator UI.
+
 ## Configuration
 
 Each SKU uses a YAML file under `config/`. Set the `camera_id` to match your system, tweak ROI boxes, tolerances, and optional silhouette diff thresholds.  See `config/sku_tf-1234.yaml` for a ready-made example.
@@ -29,4 +39,3 @@ Annotated PNGs and JSON reports are stored in `data/logs/<sku>/<timestamp>/` for
 * Core app lives under `app/`
 * Entry point: `app/main.py`
 * Logging to CLI + rich window overlay
-
