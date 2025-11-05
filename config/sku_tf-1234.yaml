@@ -1,0 +1,44 @@
+sku: tf-1234
+camera_id: 0
+capture:
+  fps: 30
+  resolution:
+    width: 1440
+    height: 1080
+  warmup_frames: 15
+geometry:
+  mm_per_px_override: null
+  fiducial:
+    aruco_dict: DICT_4X4_50
+    ids: [10, 11]
+    tag_size_mm: 20.0
+stabilization:
+  roi: [480, 320, 480, 320]
+  required_frames: 8
+  pixel_jitter_threshold: 2.5
+inspection:
+  holes:
+    - name: inlet
+      roi: [420, 360, 160, 160]
+      nominal_diameter_mm: 5.0
+      diameter_tolerance_mm: 0.25
+      center_tolerance_mm: 0.35
+    - name: outlet
+      roi: [860, 360, 160, 160]
+      nominal_diameter_mm: 5.0
+      diameter_tolerance_mm: 0.25
+      center_tolerance_mm: 0.35
+  silhouette:
+    enabled: false
+    roi: [360, 320, 720, 400]
+    diff_threshold: 25
+    max_mismatch_pct: 2.0
+    reference_path: null
+overlay:
+  font_scale: 0.8
+  thickness: 2
+  show_debug: true
+storage:
+  root: data/logs
+  save_annotated: true
+  save_raw: false
